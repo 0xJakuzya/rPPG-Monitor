@@ -1,3 +1,3 @@
 # rPPG Detection
 
-Определение частоты сердечных сокращений по видео с камеры методом remote photoplethysmography (rPPG).
+Real-time heart rate estimation from webcam video using remote photoplethysmography (rPPG)
