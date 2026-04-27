@@ -7,6 +7,8 @@
 
 Real-time remote photoplethysmography (rPPG) — heart rate measurement from a regular webcam by analyzing subtle color changes in facial skin caused by blood flow, without any contact sensors.
 
+![Demo](assets/me.png)
+
 ## Stack
 
 | Component | Technology |
@@ -37,8 +39,6 @@ Mean RGB values are averaged across all three ROIs and buffered over a **10-seco
 | Detrending | Sparse matrix method  |
 | Bandpass filter | Chebyshev Type II (40–180 BPM) |
 | HR estimation | FFT peak detection |
-
-![Demo](assets/me.png)
 
 ## Project structure
 
