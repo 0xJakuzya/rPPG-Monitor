@@ -1,5 +1,6 @@
 import numpy as np
 from src.processing import detrend, bandpass_filter
+from src import config
 
 def chrom(rgb: np.ndarray, fs: float) -> np.ndarray:
     win_sec = 1.6
@@ -14,14 +15,14 @@ def chrom(rgb: np.ndarray, fs: float) -> np.ndarray:
         Xs = 3 * Rn - 2 * Gn
         Ys = 1.5 * Rn + Gn - 1.5 * Bn
         if l >= 9:
-            Xs = bandpass_filter(Xs, fs, 0.75, 3.0)
-            Ys = bandpass_filter(Ys, fs, 0.75, 3.0)
+            Xs = bandpass_filter(Xs, fs, config.CHEBY_LO, config.CHEBY_HI)
+            Ys = bandpass_filter(Ys, fs, config.CHEBY_LO, config.CHEBY_HI)
         alpha = np.std(Xs) / (np.std(Ys) + 1e-9)
         h = Xs - alpha * Ys
         h -= h.mean()
         H[n - l:n] += h
     H = detrend(H)
-    bvp = bandpass_filter(H, fs, 0.75, 3.0)
+    bvp = bandpass_filter(H, fs, config.CHEBY_LO, config.CHEBY_HI)
     bvp -= bvp.mean()
     std = bvp.std()
     if std < 1e-6:

@@ -1,6 +1,7 @@
 import math
 import numpy as np
 from src.processing import detrend, bandpass_filter
+from src import config
 
 def pos(rgb, fs):
     win_sec = 1.6
@@ -19,7 +20,7 @@ def pos(rgb, fs):
             h -= h.mean()
             H[m:n] += h
     H = detrend(H)
-    bvp = bandpass_filter(H, fs, 0.75, 3.0)
+    bvp = bandpass_filter(H, fs, config.CHEBY_LO, config.CHEBY_HI)
     bvp -= bvp.mean()
     bvp /= bvp.std() + 1e-9
     return bvp.astype(np.float32)
