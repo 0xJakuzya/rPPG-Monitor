@@ -1,48 +1,72 @@
-![Python](https://img.shields.io/badge/-Python-3776AB?logo=python&logoColor=white)
-![OpenCV](https://img.shields.io/badge/-OpenCV-5C3EE8?logo=opencv&logoColor=white)
-![NumPy](https://img.shields.io/badge/-NumPy-013243?logo=numpy&logoColor=white)
-![SciPy](https://img.shields.io/badge/-SciPy-8CAAE6?logo=scipy&logoColor=white)
-![MediaPipe](https://img.shields.io/badge/-MediaPipe-FF6F00?logo=google&logoColor=white)
+# rPPG-Moniitor
 
-# rPPG-Detection
+`rPPG-Monitor` — проект по восстановлению физиологического сигнала сердечной активности по обычному видео лица.  
+Цель работы — построить систему, которая по изменениям цвета кожи в небольших областях лица сможет оценивать rPPG/BVP-сигнал и использовать его для последующего расчета частоты сердечных сокращений.
 
-This project is about remote photoplethysmography (rPPG).  It means heart rate estimation from a normal camera.  The system looks at small color changes on the face skin.
+## Идея проекта
 
-Now the project has two parts:
+В основе проекта лежит предположение, что кровенаполнение сосудов вызывает очень слабые, но измеримые изменения цвета кожи.  
+Если выделить информативные участки лица, отследить их во времени и подать полученную последовательность в нейросетевую модель, можно попытаться восстановить сигнал, связанный с пульсовой волной.
 
-- classical baseline methods: `POS` and `CHROM`
-- a simple neural network on face patches: `CNN`
+## Предполагаемый пайплайн
 
-![Demo](assets/me.png)
+Будущая система строится как последовательность этапов:
 
-## What The Project Does
+```text
+Видео лица
+  -> детекция и разметка лица
+  -> выделение ROI-областей кожи
+  -> формирование временной последовательности признаков
+  -> нейросетевая модель
+  -> восстановленный rPPG/BVP-сигнал
+  -> оценка ЧСС
+```
 
-The project uses `MediaPipe Face Landmarker` to find the face. After that it takes small skin patches from the forehead and cheeks. These patches are used for:
+## Архитектурная концепция
 
-- classical signal methods
-- preprocessing for training
-- a patch-based CNN model
+Текущая реализация опирается на несколько ключевых идей:
 
-## Project Structure
+- использование лицевых landmarks для стабилизации областей интереса;
+- работа не со всем лицом сразу, а с небольшими ROI-патчами;
+- обучение модели на синхронизированном опорном PPG-сигнале;
+- сравнение с классическими baseline-методами, такими как `POS` и `CHROM`.
+
+Нейросетевая часть проекта рассматривается как легкая CNN, которая получает последовательность локальных патчей лица и восстанавливает одномерный физиологический сигнал.
+
+## Технологическая база
+
+В проекте используются:
+
+- `Python`
+- `OpenCV`
+- `NumPy`
+- `SciPy`
+- `MediaPipe`
+- `PyTorch`
+
+## Структура проекта
 
 ```text
 rPPG-Detection/
 ├── main.py
+├── assets/
 ├── models/
 │   ├── baseline.py
 │   ├── chrom.py
 │   ├── loss.py
 │   └── pos.py
-├── src/
-│   ├── config.py
-│   ├── dataset.py
-│   ├── face_detector.py
-│   ├── preprocessing.py
-│   ├── test.py
-│   ├── train.py
-│   ├── utils.py
-│   ├── video.py
-│   └── visualization.py
-└── assets/
-    └── me.png
+└── src/
+    ├── config.py
+    ├── dataset.py
+    ├── face_detector.py
+    ├── preprocessing.py
+    ├── test.py
+    ├── train.py
+    ├── utils.py
+    ├── video.py
+    └── visualization.py
 ```
+
+## Статус
+
+На текущем этапе проект находится в стадии активной разработки и экспериментальной проверки baseline-подходов на датасете `MCD-rPPG`.
