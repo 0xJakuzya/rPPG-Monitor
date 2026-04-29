@@ -76,21 +76,22 @@ def split_by_patient(files: list[str], val_split: float, seed: int) -> DatasetSp
 def get_patient_id(file: str) -> str:
     return Path(file).stem.split("_", 1)[0]
 
-def build_dataloaders(files: list[str], split: DatasetSplit, train_config: dict,) -> tuple[DataLoader, DataLoader]:
-    dataset = RPPGDataset(files)
+def build_dataloaders(dataset: Dataset, split: DatasetSplit, train_config: dict,) -> tuple[DataLoader, DataLoader]:
+    nw = train_config["NUM_WORKERS"]
+    common = dict(
+        batch_size=train_config["BATCH_SIZE"],
+        num_workers=nw,
+        pin_memory=True,
+        persistent_workers=nw > 0,
+        prefetch_factor=4 if nw > 0 else None,
+    )
     train_loader = DataLoader(
         Subset(dataset, split.train_indices),
-        batch_size=train_config["BATCH_SIZE"],
-        shuffle=True,
-        num_workers=train_config["NUM_WORKERS"],
-        drop_last=False,
+        shuffle=True, drop_last=False, **common,
     )
     val_loader = DataLoader(
         Subset(dataset, split.val_indices),
-        batch_size=train_config["BATCH_SIZE"],
-        shuffle=False,
-        num_workers=train_config["NUM_WORKERS"],
-        drop_last=False,
+        shuffle=False, drop_last=False, **common,
     )
     return train_loader, val_loader
 

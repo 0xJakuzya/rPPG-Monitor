@@ -22,10 +22,10 @@ def resample_ppg(ppg: np.ndarray, ppg_fps: float,
     return np.concatenate([resampled, pad]).astype(np.float32)
 
 def load_physnet(device: torch.device):
-    from models.baseline import PatchCNN
+    from models.baseline import Baseline
 
-    model = PatchCNN().to(device)
-    model.load_state_dict(torch.load(config.PHYSNET_MODEL_PATH, map_location=device))
+    model = Baseline().to(device)
+    model.load_state_dict(torch.load(config.CNN_MODEL_PATH, map_location=device))
     model.eval()
     return model
 
