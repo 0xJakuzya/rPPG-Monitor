@@ -11,6 +11,8 @@ import torch.nn as nn
 from tqdm import tqdm
 
 from models.baseline import Baseline
+from models.physnet import PhysNet
+from models.loss import CNNLoss
 from src import config
 from src.dataset import (
     RPPGDataset,
@@ -207,6 +209,9 @@ def run(args=None) -> None:
     device = torch.device(args.device if (args.device == "cpu" or torch.cuda.is_available()) else "cpu")
     fps = float(config.FPS_TARGET)
 
+    if device.type == "cuda":
+        torch.backends.cudnn.benchmark = True
+
     print(f"[1/5] Discover windows in {args.data_dir}")
     files = discover_window_files(args.data_dir)
     if not files:
@@ -244,12 +249,25 @@ def run(args=None) -> None:
     print(f"train batches: {len(train_loader)} | val batches: {len(val_loader)}")
 
     print(f"\n[4/5] Build model")
-    model = Baseline().to(device)
+    if args.model == "baseline":
+        model = Baseline().to(device)
+    elif args.model == "physnet":
+        model = PhysNet().to(device)
+    else:
+        raise ValueError(f"unknown --model {args.model!r}")
+
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
-    criterion = NegPearson()
+
+    if args.loss == "negpearson":
+        criterion = NegPearson()
+    elif args.loss == "cnn":
+        criterion = CNNLoss(spectral_alpha=args.spectral_alpha)
+    else:
+        raise ValueError(f"unknown --loss {args.loss!r}")
+
     n_params = sum(p.numel() for p in model.parameters())
-    print(f"device: {device} | model: Baseline | params: {n_params:,}")
+    print(f"device: {device} | model: {args.model} | loss: {args.loss} | params: {n_params:,}")
     print(f"output: {out_dir}")
 
     print(f"\n[5/5] Train ({args.epochs} epochs)")
@@ -334,6 +352,10 @@ def parse_args(args=None) -> argparse.Namespace:
     parser.add_argument("--max-train-patients", type=int, default=None,
                         help="cap train set to N patients (for fast CPU sanity runs)")
     parser.add_argument("--max-val-patients", type=int, default=None)
+    parser.add_argument("--model", choices=["baseline", "physnet"], default="baseline")
+    parser.add_argument("--loss", choices=["negpearson", "cnn"], default="negpearson")
+    parser.add_argument("--spectral-alpha", type=float, default=0.1,
+                        help="weight of spectral term in CNNLoss (only used when --loss cnn)")
     return parser.parse_args(args)
 
 
