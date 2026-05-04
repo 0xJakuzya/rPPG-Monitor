@@ -12,7 +12,7 @@ from tqdm import tqdm
 
 from models.baseline import Baseline
 from models.physnet import PhysNet
-from models.loss import CNNLoss
+from models.loss import CNNLoss, ShiftLoss
 from src import config
 from src.dataset import (
     RPPGDataset,
@@ -217,7 +217,7 @@ def run(args=None) -> None:
     if not files:
         return
     describe_dataset(files)
-    dataset = RPPGDataset(files)
+    dataset = RPPGDataset(files, use_frame_diff=args.use_frame_diff)
 
     print(f"\n[2/5] Subject-stratified split")
     split = split_by_patient(files, val_split=args.val_split, seed=args.seed)
@@ -263,6 +263,8 @@ def run(args=None) -> None:
         criterion = NegPearson()
     elif args.loss == "cnn":
         criterion = CNNLoss(spectral_alpha=args.spectral_alpha)
+    elif args.loss == "shiftloss":
+        criterion = ShiftLoss(max_shift_sec=args.max_shift_sec, fps=fps)
     else:
         raise ValueError(f"unknown --loss {args.loss!r}")
 
@@ -279,6 +281,9 @@ def run(args=None) -> None:
     history: list[dict] = []
     best_mae = float("inf")
     best_pred = best_target = None
+    epochs_without_improvement = 0
+    stopped_early = False
+    stop_reason = None
 
     for epoch in range(1, args.epochs + 1):
         t0 = time.time()
@@ -304,11 +309,15 @@ def run(args=None) -> None:
         history.append(record)
 
         marker = " "
-        if val_m["mae"] < best_mae:
+        improved = val_m["mae"] < best_mae - args.early_stopping_min_delta
+        if improved:
             best_mae = val_m["mae"]
             best_pred, best_target = val_pred, val_target
             torch.save(model.state_dict(), out_dir / config.CNN_MODEL_PATH)
             marker = "*"
+            epochs_without_improvement = 0
+        else:
+            epochs_without_improvement += 1
 
         print(f"{marker}{epoch:4d} {train_m['loss']:11.4f} {val_m['loss']:10.4f} "
               f"{train_m['mae']:10.2f} {val_m['mae']:9.2f} {val_m['rmse']:10.2f} "
@@ -317,12 +326,27 @@ def run(args=None) -> None:
         with (out_dir / "history.json").open("w") as f:
             json.dump(history, f, indent=2)
 
+        if args.early_stopping_patience > 0 and epochs_without_improvement >= args.early_stopping_patience:
+            stopped_early = True
+            stop_reason = (
+                f"val_hr_mae plateau: no improvement >= {args.early_stopping_min_delta:.4f} "
+                f"for {args.early_stopping_patience} epochs"
+            )
+            print(f"early stopping: {stop_reason}")
+            break
+
     print("-" * 100)
     print(f"best val HR MAE: {best_mae:.2f} BPM")
 
     summary = {
         "best_val_hr_mae": best_mae,
         "n_epochs": args.epochs,
+        "n_epochs_completed": len(history),
+        "stopped_early": stopped_early,
+        "stop_reason": stop_reason,
+        "fps": fps,
+        "window": config.CNN_WINDOW,
+        "window_sec": config.CNN_WINDOW / fps,
         "n_train_windows": len(split.train_indices),
         "n_val_windows": len(split.val_indices),
         "n_train_patients": len(split.train_patients),
@@ -353,9 +377,17 @@ def parse_args(args=None) -> argparse.Namespace:
                         help="cap train set to N patients (for fast CPU sanity runs)")
     parser.add_argument("--max-val-patients", type=int, default=None)
     parser.add_argument("--model", choices=["baseline", "physnet"], default="baseline")
-    parser.add_argument("--loss", choices=["negpearson", "cnn"], default="negpearson")
+    parser.add_argument("--loss", choices=["negpearson", "cnn", "shiftloss"], default="negpearson")
     parser.add_argument("--spectral-alpha", type=float, default=0.1,
                         help="weight of spectral term in CNNLoss (only used when --loss cnn)")
+    parser.add_argument("--max-shift-sec", type=float, default=0.33,
+                        help="max temporal shift in seconds for ShiftLoss (only used when --loss shiftloss)")
+    parser.add_argument("--use-frame-diff", action="store_true",
+                        help="apply normalized frame difference preprocessing (Ho et al.)")
+    parser.add_argument("--early-stopping-patience", type=int, default=0,
+                        help="stop when val HR MAE has not improved for N epochs; 0 disables")
+    parser.add_argument("--early-stopping-min-delta", type=float, default=0.0,
+                        help="minimum val HR MAE improvement in BPM to reset early stopping")
     return parser.parse_args(args)
 
 

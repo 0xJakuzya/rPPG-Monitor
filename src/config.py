@@ -6,7 +6,7 @@ FILTER_TYPE: str = "chebyshev2"
 CAMERA_INDEX: int = 0         
 FRAME_WIDTH: int = 640
 FRAME_HEIGHT: int = 480
-FPS_TARGET: int = 30
+FPS_TARGET: int = 15
 
 # Window
 WINDOW_NAME: str = "rPPG"

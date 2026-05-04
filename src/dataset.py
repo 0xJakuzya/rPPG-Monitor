@@ -96,8 +96,10 @@ def build_dataloaders(dataset: Dataset, split: DatasetSplit, train_config: dict,
     return train_loader, val_loader
 
 class RPPGDataset(Dataset):
-    def __init__(self, files: list[str]):
+    def __init__(self, files: list[str], use_frame_diff: bool = False, eps: float = 1e-6):
         self.files = files
+        self.use_frame_diff = use_frame_diff
+        self.eps = eps
 
     def __len__(self) -> int:
         return len(self.files)
@@ -106,4 +108,24 @@ class RPPGDataset(Dataset):
         sample = np.load(self.files[index])
         patches = torch.from_numpy(sample["patches"]).float().permute(0, 1, 4, 2, 3).contiguous()
         ppg = torch.from_numpy(sample["ppg"]).float()
+
+        if self.use_frame_diff:
+            patches = self.apply_frame_diff(patches)
+
         return patches, ppg
+
+    def apply_frame_diff(self, patches: torch.Tensor) -> torch.Tensor:
+        """
+        Normalized Frame Difference (Ho et al., CVPR 2023 workshop).
+        """
+        batch_time, roi, channels, h, w = patches.shape
+        diff = torch.zeros_like(patches)
+
+        for t in range(1, batch_time):
+            curr = patches[t]
+            prev = patches[t - 1]
+            numerator = curr - prev
+            denominator = curr.abs() + prev.abs() + self.eps
+            diff[t] = numerator / denominator
+
+        return diff
