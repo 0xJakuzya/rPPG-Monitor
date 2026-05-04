@@ -1,27 +1,29 @@
 # rPPG Heart Rate Estimation
 
-Этот проект реализует метод remote photoplethysmography (rPPG) — технологию, позволяющую оценивать частоту сердечных сокращений (Heart Rate) без физического контакта с телом.
+This project uses remote photoplethysmography (rPPG) to estimate heart rate from
+face video without physical contact.
 
-Вместо датчиков используется обычная камера: она фиксирует едва заметные изменения цвета кожи, вызванные кровотоком. Далее эти изменения преобразуются в одномерный физиологический сигнал, из которого извлекается пульс.
+Instead of body sensors, it uses a normal camera. The camera records small skin
+color changes caused by blood flow. These changes are converted into a
+one-dimensional physiological signal, and heart rate is estimated from it.
 
-## Архитектура PhysNet
+## PhysNet Architecture
 
 ![PhysNet architecture](assets/physnet_architecture.png)
-Рис 1. Архитектура PhysNet + ROI-patches
 
+Fig. 1. PhysNet architecture with ROI patches.
 
-## Возможности
+## Features
 
-- Извлечение multi-ROI патчей лица через MediaPipe.
-- Подготовка `.npz`-окон для обучения.
-- Subject-level train/validation split, чтобы пациенты не смешивались между
-  train и validation.
-- Обучение `baseline` CNN и `physnet`.
-- Loss-функции `negpearson` и `cnn`.
-- Оценка качества в HR-пространстве: MAE, RMSE, scatter plot, Bland-Altman.
-- Realtime POS/CHROME baseline через веб-камеру.
+- Extracts multi-ROI face patches with MediaPipe.
+- Prepares `.npz` windows for training.
+- Uses subject-level train/validation split.
+- Trains `baseline` CNN and `physnet` models.
+- Supports `negpearson` and `cnn` loss functions.
+- Evaluates HR with MAE, RMSE, scatter plot, and Bland-Altman plot.
+- Runs realtime POS/CHROM baseline with a webcam.
 
-## Установка
+## Installation
 
 ```bash
 python -m venv .venv
@@ -29,7 +31,7 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-## Структура
+## Structure
 
 ```text
 rPPG-Detection/
